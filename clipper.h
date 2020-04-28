@@ -26,6 +26,9 @@ class Clipper : public Reference {
 public:
 	Clipper();
 
+    real_t Area(const Vector<Vector2> &path);
+    int PointInPolygon(const Vector2 &pt, const Vector<Vector2> &path);
+
 	//--------------------------------------------------------------------------
 	// Clipping methods
 	//--------------------------------------------------------------------------

@@ -12,6 +12,65 @@ Clipper::Clipper() :
 		clip_type(cl::ctUnion),
 		delta(0.0) {}
 
+real_t Clipper::Area(const Vector<Vector2> &path) {
+    int cnt = (int)path.size();
+    if (cnt < 3) return 0;
+
+    double a = 0;
+    for (int i = 0, j = cnt - 1; i < cnt; ++i)
+        {
+            a += ((double)path[j].x + path[i].x) * ((double)path[j].y - path[i].y);
+            j = i;
+        }
+    return -a * 0.5;
+}
+
+//------------------------------------------------------------------------------
+
+//See "The Point in Polygon Problem for Arbitrary Polygons" by Hormann & Agathos
+//http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.88.5498&rep=rep1&type=pdf
+int Clipper::PointInPolygon(const Vector2 &pt, const Vector<Vector2> &path) {
+  //returns 0 if false, +1 if true, -1 if pt ON polygon boundary
+  int result = 0;
+  size_t cnt = path.size();
+  if (cnt < 3) return 0;
+  Vector2 ip = path[0];
+  for(size_t i = 1; i <= cnt; ++i)
+  {
+    Vector2 ipNext = (i == cnt ? path[0] : path[i]);
+    if (ipNext.x == pt.y)
+    {
+        if ((ipNext.x == pt.x) || (ip.y == pt.y && 
+          ((ipNext.x > pt.x) == (ip.x < pt.x)))) return -1;
+    }
+    if ((ip.y < pt.y) != (ipNext.y < pt.y))
+    {
+      if (ip.x >= pt.x)
+      {
+        if (ipNext.x > pt.x) result = 1 - result;
+        else
+        {
+          double d = (double)(ip.x - pt.x) * (ipNext.y - pt.y) - 
+            (double)(ipNext.x - pt.x) * (ip.y - pt.y);
+          if (!d) return -1;
+          if ((d > 0) == (ipNext.y > ip.y)) result = 1 - result;
+        }
+      } else
+      {
+        if (ipNext.x > pt.x)
+        {
+          double d = (double)(ip.x - pt.x) * (ipNext.y - pt.y) - 
+            (double)(ipNext.x - pt.x) * (ip.y - pt.y);
+          if (!d) return -1;
+          if ((d > 0) == (ipNext.y > ip.y)) result = 1 - result;
+        }
+      }
+    }
+    ip = ipNext;
+  } 
+  return result;
+}
+
 //------------------------------------------------------------------------------
 // Clipping methods
 //------------------------------------------------------------------------------
@@ -443,7 +502,8 @@ void Clipper::_bind_methods() {
 	//--------------------------------------------------------------------------
 	// Clipper methods
 	//--------------------------------------------------------------------------
-
+    ClassDB::bind_method(D_METHOD("area", "path"), &Clipper::Area);
+    ClassDB::bind_method(D_METHOD("point_in_polygon", "pt", "path"), &Clipper::PointInPolygon);
 	ClassDB::bind_method(D_METHOD("add_points", "points"), &Clipper::add_points);
 	ClassDB::bind_method(D_METHOD("execute", "build_hierarchy"), &Clipper::execute, DEFVAL(false));
 
